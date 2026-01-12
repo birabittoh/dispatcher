@@ -1,0 +1,121 @@
+name: Go Test and Build
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+env:
+  COVERAGE_THRESHOLD: '75'
+  GO_VERSION: '1.25'
+
+jobs:
+  test-and-build:
+    runs-on: docker
+    container:
+      image: golang:1.25-alpine
+    steps:
+      - name: Install dependencies
+        run: |
+          apk add --no-cache git bash bc
+
+      - name: Checkout code
+        run: |
+          git clone ${{ gitea.server_url }}/${{ gitea.repository }}.git .
+          git checkout ${{ gitea.sha }}
+
+      - name: Setup Go cache
+        run: |
+          mkdir -p ~/.cache/go-build
+          mkdir -p ~/go/pkg/mod
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run tests with coverage
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Check coverage threshold
+        run: |
+          echo "=== Coverage Analysis ==="
+          
+          # Check if coverage.out exists
+          if [ ! -f coverage.out ]; then
+            echo "⚠️  Coverage file not found"
+            exit 0
+          fi
+          
+          # Use go tool cover to get percentages per package
+          coverage_output=$(go tool cover -func=coverage.out)
+          
+          # Extract only lines with package totals (ignoring individual functions)
+          # Package lines end with "total:"
+          package_coverages=$(echo "$coverage_output" | grep "total:" | awk '{print $3}' | sed 's/%//')
+          
+          if [ -z "$package_coverages" ]; then
+            echo "⚠️  No coverage data found"
+            exit 0
+          fi
+          
+          # Calculate average
+          total=0
+          count=0
+          
+          echo "📦 Coverage per package:"
+          while IFS= read -r line; do
+            if [ ! -z "$line" ]; then
+              echo "$coverage_output" | grep "total:" | sed -n "$((count + 1))p" | awk '{print "  " $1 " " $2 " " $3}'
+              total=$(echo "$total + $line" | bc)
+              count=$((count + 1))
+            fi
+          done <<< "$package_coverages"
+          
+          if [ $count -eq 0 ]; then
+            echo "⚠️  No valid package coverage found"
+            exit 0
+          fi
+          
+          # Calculate average
+          average=$(echo "scale=2; $total / $count" | bc)
+          echo ""
+          echo "📊 Average coverage: ${average}%"
+          echo "🎯 Required threshold: ${COVERAGE_THRESHOLD}%"
+          echo ""
+          
+          # Compare with threshold
+          if (( $(echo "$average < $COVERAGE_THRESHOLD" | bc -l) )); then
+            echo "⚠️  WARNING: Average coverage (${average}%) is below the threshold of ${COVERAGE_THRESHOLD}%"
+            echo "::warning::Coverage below threshold: ${average}% < ${COVERAGE_THRESHOLD}%"
+            # Don't fail the job, just warning
+            exit 0
+          else
+            echo "✅ Adequate coverage: ${average}% >= ${COVERAGE_THRESHOLD}%"
+          fi
+
+      - name: Generate coverage report
+        run: |
+          go tool cover -html=coverage.out -o coverage.html
+          echo "📄 Coverage report generated: coverage.html"
+
+      - name: Build project
+        run: |
+          echo "🔨 Building Go modules..."
+          go build -v ./...
+          echo "✅ Build completed successfully"
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run staticcheck (opzionale)
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+        continue-on-error: true
