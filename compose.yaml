@@ -1,6 +1,6 @@
 services:
-  backend-example:
-    image: backend-example:latest
+  app:
+    image: registry.gitlab.com/gastroshare/api/gastroshare.api.backend-example:latest
     build: .
     container_name: backend-example
     restart: unless-stopped
