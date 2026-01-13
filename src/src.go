@@ -3,31 +3,29 @@ package src
 import (
 	"log/slog"
 	"net/http"
-	"os"
 
-	"backend-example/src/api"
-	"backend-example/src/config"
-	"backend-example/src/ui"
+	"webhook-dispatcher/src/api"
+	"webhook-dispatcher/src/config"
 
 	"github.com/joho/godotenv"
 )
 
-// Configuration holds all app settings
-
 func Main() int {
 	godotenv.Load()
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	config := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		slog.Error("Failed to load config", "error", err)
+		return 1
+	}
+
+	dispatcher := api.NewDispatcher()
 
 	// API handlers
-	http.HandleFunc("/api/sum", api.HandleSum)
+	http.Handle("/api/webhook", api.HandleWebhook(dispatcher, cfg))
 	http.HandleFunc("/health", api.HandleHealth)
 
-	// UI handlers
-	http.HandleFunc("/", ui.HandleIndex)
-
-	logger.Info("Server starting on " + config.ListenAddress)
-	logger.Error(http.ListenAndServe(config.ListenAddress, nil).Error())
+	slog.Info("Server starting on " + cfg.ListenAddress)
+	slog.Error(http.ListenAndServe(cfg.ListenAddress, nil).Error())
 	return 0
 }

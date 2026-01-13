@@ -1,4 +1,4 @@
-PROJECT_NAME ?= backend-example
+PROJECT_NAME ?= webhook-dispatcher
 MAIN ?= .
 DIST_DIR ?= dist
 GO ?= go

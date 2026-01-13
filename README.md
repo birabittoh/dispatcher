@@ -1,10 +1,10 @@
-# Backend Example
+# Webhook Dispatcher
 
-A simple backend example in go to show you good programming practices.
+A webhook dispatcher for GitLab.
 
 ## Features
 
-* 📊 **Sum endpoint** - Easily sum two integers
+Listens to GitLab webhooks and sends Telegram messages.
 
 ## Documentation
 

@@ -2,8 +2,8 @@
 
 Clone the repository:
 ```bash
-git clone ssh://git@codeberg.org/gastroshare/backend-example.git
-cd backend-example
+git clone ssh://git@gitlab.com:gastroshare/api/gastroshare.api.webhook-dispatcher.git
+cd webhook-dispatcher
 ```
 
 Then, either build for production:

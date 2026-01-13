@@ -1,8 +1,8 @@
 package main
 
 import (
-	"backend-example/src"
 	"os"
+	"webhook-dispatcher/src"
 )
 
 func main() {

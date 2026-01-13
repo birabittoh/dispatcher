@@ -1,8 +1,8 @@
 services:
   app:
-    image: registry.gitlab.com/gastroshare/api/gastroshare.api.backend-example:latest
+    image: registry.gitlab.com/gastroshare/api/gastroshare.api.webhook-dispatcher:latest
     build: .
-    container_name: backend-example
+    container_name: webhook-dispatcher
     restart: unless-stopped
     ports:
       - 127.0.0.1:8080:8080

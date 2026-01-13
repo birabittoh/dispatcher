@@ -13,7 +13,7 @@ COPY src ./src
 COPY *.go ./
 
 # Build
-RUN CGO_ENABLED=0 go build -o /dist/backend-example
+RUN CGO_ENABLED=0 go build -o /dist/webhook-dispatcher
 
 # Test
 FROM build-stage AS run-test-stage
@@ -25,4 +25,4 @@ WORKDIR /app
 
 COPY --from=builder /dist /app
 
-ENTRYPOINT ["/app/backend-example"]
+ENTRYPOINT ["/app/webhook-dispatcher"]
