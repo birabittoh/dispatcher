@@ -20,7 +20,7 @@ func sendTelegramMessage(botToken, chatID, threadID, message string) error {
 	payload := map[string]string{
 		"chat_id":    chatID,
 		"text":       message,
-		"parse_mode": "MarkdownV2",
+		"parse_mode": "Markdown",
 	}
 	if threadID != "" {
 		payload["message_thread_id"] = threadID
