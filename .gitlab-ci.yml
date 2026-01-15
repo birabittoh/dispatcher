@@ -1,6 +1,6 @@
 stages:
   - test
-  - build
+#  - build
   - docker
 
 variables:
@@ -36,22 +36,22 @@ test:
         path: coverage.out
     when: always
 
-build:
-  stage: build
-  image: golang:1.25
-  script:
-    - echo "Building executable..."
-    - DIST_DIR=${DIST_DIR} make build
-    - echo "Creating archive from ${DIST_DIR} folder..."
-    - tar -czf ${DIST_DIR}-${CI_COMMIT_SHORT_SHA}.tar.gz -C ${DIST_DIR} .
-    - ls -lh ${DIST_DIR}-${CI_COMMIT_SHORT_SHA}.tar.gz
-  artifacts:
-    name: "${DIST_DIR}-${CI_COMMIT_SHORT_SHA}"
-    paths:
-      - ${DIST_DIR}-${CI_COMMIT_SHORT_SHA}.tar.gz
-    expire_in: 30 days
-  dependencies:
-    - test
+#build:
+#  stage: build
+#  image: golang:1.25
+#  script:
+#    - echo "Building executable..."
+#    - DIST_DIR=${DIST_DIR} make build
+#    - echo "Creating archive from ${DIST_DIR} folder..."
+#    - tar -czf ${DIST_DIR}-${CI_COMMIT_SHORT_SHA}.tar.gz -C ${DIST_DIR} .
+#    - ls -lh ${DIST_DIR}-${CI_COMMIT_SHORT_SHA}.tar.gz
+#  artifacts:
+#    name: "${DIST_DIR}-${CI_COMMIT_SHORT_SHA}"
+#    paths:
+#      - ${DIST_DIR}-${CI_COMMIT_SHORT_SHA}.tar.gz
+#    expire_in: 30 days
+#  dependencies:
+#    - test
 
 docker-build-push:
   stage: docker
@@ -71,8 +71,6 @@ docker-build-push:
     - echo "✓ Image pushed successfully:"
     - echo "  - ${IMAGE_NAME}:${IMAGE_TAG}"
     - echo "  - ${IMAGE_NAME}:latest"
-  dependencies:
-    - build
   only:
     - main
     - develop
