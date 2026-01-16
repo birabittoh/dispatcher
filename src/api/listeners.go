@@ -87,7 +87,9 @@ URL: ` + event.ObjectAttributes.URL
 }
 
 func (l *telegramListener) OnPipeline(ctx context.Context, event *gitlab.PipelineEvent) error {
-	silent := event.ObjectAttributes.Status != "failed"
+	if event.ObjectAttributes.Status != "failed" {
+		return nil // Only notify on failed pipelines
+	}
 
 	tbt := ctx.Value("TelegramBotToken").(string)
 	tcid := ctx.Value("TelegramChatID").(string)
@@ -99,5 +101,5 @@ Status: ` + event.ObjectAttributes.Status + `
 Ref: ` + event.ObjectAttributes.Ref + `
 User: ` + event.User.Name
 
-	return sendTelegramMessage(tbt, tcid, ttid, text, silent)
+	return sendTelegramMessage(tbt, tcid, ttid, text, false)
 }
