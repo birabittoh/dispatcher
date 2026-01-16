@@ -26,7 +26,7 @@ func Init(logLevelStr string) {
 		slog.New(
 			tint.NewHandler(os.Stdout, &tint.Options{
 				Level:      logLevel,
-				TimeFormat: time.Kitchen,
+				TimeFormat: time.RFC3339,
 			}),
 		),
 	)

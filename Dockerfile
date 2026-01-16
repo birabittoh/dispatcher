@@ -13,7 +13,7 @@ COPY src ./src
 COPY *.go ./
 
 # Build
-RUN CGO_ENABLED=0 go build -o dispatcher
+RUN CGO_ENABLED=0 go build -o /dist/dispatcher
 
 # Test
 FROM build-stage AS run-test-stage
