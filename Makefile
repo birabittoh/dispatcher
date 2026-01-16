@@ -1,4 +1,4 @@
-PROJECT_NAME ?= webhook-dispatcher
+PROJECT_NAME ?= dispatcher
 MAIN ?= .
 DIST_DIR ?= dist
 GO ?= go

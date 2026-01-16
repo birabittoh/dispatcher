@@ -1,8 +1,8 @@
 services:
   app:
-    image: registry.gitlab.com/gastroshare/api/gastroshare.api.webhook-dispatcher:latest
+    image: ghcr.io/birabittoh/dispatcher:main
     build: .
-    container_name: webhook-dispatcher
+    container_name: dispatcher
     restart: unless-stopped
     ports:
       - 127.0.0.1:8080:8080

@@ -31,7 +31,7 @@ Status: ` + event.BuildStatus + `
 Ref: ` + event.Ref + `
 Commit: ` + event.Commit.SHA[:8] + ` - ` + event.Commit.Message
 
-	return sendTelegramMessage(tbt, tcid, ttid, text)
+	return sendTelegramMessage(tbt, tcid, ttid, text, true)
 }
 
 func (l *telegramListener) OnPush(ctx context.Context, event *gitlab.PushEvent) error {
@@ -52,7 +52,7 @@ Commits: ` + strconv.Itoa(len(event.Commits)) + "\n")
 - ` + commit.ID[:8] + ` ` + commit.Message)
 	}
 
-	return sendTelegramMessage(tbt, tcid, ttid, text.String())
+	return sendTelegramMessage(tbt, tcid, ttid, text.String(), true)
 }
 
 func (l *telegramListener) OnTag(ctx context.Context, event *gitlab.TagEvent) error {
@@ -67,7 +67,7 @@ Project: ` + event.Project.Name + `
 Tag: ` + event.Ref + `
 User: ` + event.UserName
 
-		return sendTelegramMessage(tbt, tcid, ttid, text)
+		return sendTelegramMessage(tbt, tcid, ttid, text, true)
 	}
 }
 
@@ -83,10 +83,12 @@ Title: ` + event.ObjectAttributes.Title + `
 User: ` + event.User.Name + `
 URL: ` + event.ObjectAttributes.URL
 
-	return sendTelegramMessage(tbt, tcid, ttid, text)
+	return sendTelegramMessage(tbt, tcid, ttid, text, false)
 }
 
 func (l *telegramListener) OnPipeline(ctx context.Context, event *gitlab.PipelineEvent) error {
+	silent := event.ObjectAttributes.Status != "failed"
+
 	tbt := ctx.Value("TelegramBotToken").(string)
 	tcid := ctx.Value("TelegramChatID").(string)
 	ttid := ctx.Value("TelegramThreadID").(string)
@@ -97,5 +99,5 @@ Status: ` + event.ObjectAttributes.Status + `
 Ref: ` + event.ObjectAttributes.Ref + `
 User: ` + event.User.Name
 
-	return sendTelegramMessage(tbt, tcid, ttid, text)
+	return sendTelegramMessage(tbt, tcid, ttid, text, silent)
 }

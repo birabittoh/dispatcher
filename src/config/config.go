@@ -9,6 +9,7 @@ import (
 type Config struct {
 	ListenAddress     string
 	GitLabSecretToken string
+	LogAPIKey         string
 	TelegramBotToken  string
 	TelegramChatID    string
 	TelegramThreadID  string
@@ -23,6 +24,7 @@ func LoadConfig() (config Config, err error) {
 	config = Config{
 		ListenAddress:     getEnv("LISTEN_ADDRESS", ":8080"),
 		GitLabSecretToken: getEnv("GITLAB_SECRET_TOKEN", ""), // optional
+		LogAPIKey:         getEnv("LOG_API_KEY", ""),         // optional
 		TelegramBotToken:  getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:    getEnv("TELEGRAM_CHAT_ID", ""),
 		TelegramThreadID:  getEnv("TELEGRAM_THREAD_ID", ""), // optional

@@ -2,7 +2,8 @@ package main
 
 import (
 	"os"
-	"webhook-dispatcher/src"
+
+	"github.com/birabittoh/dispatcher/src"
 )
 
 func main() {

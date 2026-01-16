@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"webhook-dispatcher/src/api"
-	"webhook-dispatcher/src/config"
+	"github.com/birabittoh/dispatcher/src/api"
+	"github.com/birabittoh/dispatcher/src/config"
 
 	"github.com/joho/godotenv"
 )
@@ -23,6 +23,7 @@ func Main() int {
 
 	// API handlers
 	http.Handle("/api/webhook", api.HandleWebhook(dispatcher, cfg))
+	http.Handle("/api/log", api.HandleLog(cfg))
 	http.HandleFunc("/health", api.HandleHealth)
 
 	slog.Info("Server starting on " + cfg.ListenAddress)

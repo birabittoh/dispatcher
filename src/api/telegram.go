@@ -2,9 +2,19 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 )
+
+const (
+	telegramAPISendMessageURL = "https://api.telegram.org/bot%s/sendMessage"
+	parseModeMarkdown         = "Markdown"
+)
+
+func isStatusOK(code int) bool {
+	return code >= 200 && code < 300
+}
 
 func toURLValues(data map[string]string) map[string][]string {
 	values := make(map[string][]string)
@@ -14,26 +24,24 @@ func toURLValues(data map[string]string) map[string][]string {
 	return values
 }
 
-func sendTelegramMessage(botToken, chatID, threadID, message string) error {
-	url := "https://api.telegram.org/bot" + botToken + "/sendMessage"
+func sendTelegramMessage(botToken, chatID, threadID, message string, silent bool) error {
+	url := fmt.Sprintf(telegramAPISendMessageURL, botToken)
 
 	payload := map[string]string{
-		"chat_id":    chatID,
-		"text":       message,
-		"parse_mode": "Markdown",
-	}
-	if threadID != "" {
-		payload["message_thread_id"] = threadID
+		"chat_id":              chatID,
+		"message_thread_id":    threadID,
+		"text":                 message,
+		"parse_mode":           parseModeMarkdown,
+		"disable_notification": strconv.FormatBool(silent),
 	}
 
-	// send the POST request and check that status is 2xx
 	resp, err := http.PostForm(url, toURLValues(payload))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if !isStatusOK(resp.StatusCode) {
 		return errors.New("got status code " + strconv.Itoa(resp.StatusCode))
 	}
 	return nil
