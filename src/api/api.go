@@ -100,7 +100,8 @@ func HandleLog(cfg config.Config) http.Handler {
 			}
 		}
 
-		err = sendTelegramMessage(cfg.TelegramBotToken, cfg.TelegramChatID, cfg.TelegramThreadID, msg.String(), false)
+		silent := log.Level != "WARN" && log.Level != "ERROR"
+		err = sendTelegramMessage(cfg.TelegramBotToken, cfg.TelegramChatID, cfg.TelegramThreadID, msg.String(), silent)
 		log.Sent = err == nil
 
 		// TODO: insert log in db
