@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -70,8 +71,7 @@ func HandleLog(cfg config.Config) http.Handler {
 		}
 
 		defer r.Body.Close()
-		buf := make([]byte, r.ContentLength)
-		_, err := r.Body.Read(buf)
+		buf, err := io.ReadAll(r.Body)
 		if err != nil {
 			slog.Error("failed to read log payload", "error", err)
 			http.Error(w, "Failed to read log payload", http.StatusInternalServerError)
