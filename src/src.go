@@ -1,6 +1,7 @@
 package src
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/birabittoh/dispatcher/src/api"
@@ -15,6 +16,9 @@ func Main() int {
 
 	cfg := config.LoadConfig()
 	logger := cfg.GetLogger()
+
+	cfgJson, _ := json.Marshal(cfg)
+	logger.Debug("Loaded config", "cfg", string(cfgJson))
 
 	err := cfg.Validate()
 	if err != nil {
