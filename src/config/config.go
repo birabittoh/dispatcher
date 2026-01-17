@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/birabittoh/logs"
@@ -35,6 +36,15 @@ var (
 
 func LoadConfig() *Config {
 	return &Config{
+		LogLevel: getEnv("LOG_LEVEL", "INFO"),
+
+		DBPath:           getEnv("DB_PATH", "dispatcher.db"),
+		PostgresHost:     os.Getenv("POSTGRES_HOST"), // Empty = SQLite
+		PostgresPort:     getEnvInt("POSTGRES_PORT", 5432),
+		PostgresUser:     getEnv("POSTGRES_USER", "postgres"),
+		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
+		PostgresDB:       getEnv("POSTGRES_DB", "dispatcher"),
+
 		ListenAddress:     getEnv("LISTEN_ADDRESS", ":8080"),
 		GitLabSecretToken: getEnv("GITLAB_SECRET_TOKEN", ""), // optional
 		LogAPIKey:         getEnv("LOG_API_KEY", ""),         // optional
@@ -63,6 +73,15 @@ func (c *Config) Validate() error {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
 	}
 	return defaultValue
 }
