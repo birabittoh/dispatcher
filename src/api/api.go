@@ -100,7 +100,7 @@ func HandleLog(cfg config.Config) http.Handler {
 			}
 		}
 
-		if log.Level != "WARN" && log.Level != "ERROR" {
+		if log.Level == "WARN" || log.Level == "ERROR" {
 			err = sendTelegramMessage(cfg.TelegramBotToken, cfg.TelegramChatID, cfg.TelegramThreadID, msg.String(), false)
 			log.Sent = err == nil
 		}
