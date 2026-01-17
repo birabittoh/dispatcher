@@ -4,9 +4,22 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/birabittoh/logs"
+	"github.com/lmittmann/tint"
 )
 
 type Config struct {
+	LogLevel string
+
+	DBPath           string
+	PostgresHost     string
+	PostgresPort     int
+	PostgresUser     string
+	PostgresPassword string
+	PostgresDB       string
+
 	ListenAddress     string
 	GitLabSecretToken string
 	LogAPIKey         string
@@ -20,8 +33,8 @@ var (
 	ErrMissingTelegramChatID   = errors.New("TELEGRAM_CHAT_ID is not set")
 )
 
-func LoadConfig() (config Config, err error) {
-	config = Config{
+func LoadConfig() *Config {
+	return &Config{
 		ListenAddress:     getEnv("LISTEN_ADDRESS", ":8080"),
 		GitLabSecretToken: getEnv("GITLAB_SECRET_TOKEN", ""), // optional
 		LogAPIKey:         getEnv("LOG_API_KEY", ""),         // optional
@@ -29,20 +42,22 @@ func LoadConfig() (config Config, err error) {
 		TelegramChatID:    getEnv("TELEGRAM_CHAT_ID", ""),
 		TelegramThreadID:  getEnv("TELEGRAM_THREAD_ID", ""), // optional
 	}
+}
 
-	if config.TelegramBotToken == "" {
-		slog.Error("TELEGRAM_BOT_TOKEN is not set")
-		err = ErrMissingTelegramBotToken
-		return
+func (c *Config) GetLogger() *slog.Logger {
+	level := logs.ParseLogLevel(c.LogLevel)
+	handler := tint.NewHandler(os.Stdout, &tint.Options{Level: level, TimeFormat: time.RFC3339})
+	return slog.New(handler)
+}
+
+func (c *Config) Validate() error {
+	if c.TelegramBotToken == "" {
+		return ErrMissingTelegramBotToken
 	}
-
-	if config.TelegramChatID == "" {
-		slog.Error("TELEGRAM_CHAT_ID is not set")
-		err = ErrMissingTelegramChatID
-		return
+	if c.TelegramChatID == "" {
+		return ErrMissingTelegramChatID
 	}
-
-	return
+	return nil
 }
 
 func getEnv(key, defaultValue string) string {

@@ -1,11 +1,11 @@
 package src
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/birabittoh/dispatcher/src/api"
 	"github.com/birabittoh/dispatcher/src/config"
+	"github.com/birabittoh/dispatcher/src/models"
 
 	"github.com/joho/godotenv"
 )
@@ -13,20 +13,26 @@ import (
 func Main() int {
 	godotenv.Load()
 
-	cfg, err := config.LoadConfig()
+	cfg := config.LoadConfig()
+	logger := cfg.GetLogger()
+
+	err := cfg.Validate()
 	if err != nil {
-		slog.Error("Failed to load config", "error", err)
+		logger.Error("Invalid config", "error", err)
 		return 1
 	}
 
-	dispatcher := api.NewDispatcher()
+	db, err := models.InitDB(logger, cfg)
+	if err != nil {
+		logger.Error("Failed to initialize database", "error", err)
+		return 1
+	}
 
-	// API handlers
-	http.Handle("/api/webhook", api.HandleWebhook(dispatcher, cfg))
-	http.Handle("/api/log", api.HandleLog(cfg))
-	http.HandleFunc("/health", api.HandleHealth)
+	m := api.NewManager(logger, cfg, db)
 
-	slog.Info("Server starting on " + cfg.ListenAddress)
-	slog.Error(http.ListenAndServe(cfg.ListenAddress, nil).Error())
+	mux := m.GetServeMultiplexer()
+
+	logger.Info("Server starting on " + cfg.ListenAddress)
+	logger.Error(http.ListenAndServe(cfg.ListenAddress, mux).Error())
 	return 0
 }

@@ -2,24 +2,37 @@ package api
 
 import (
 	"context"
-	"crypto/subtle"
-	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/birabittoh/dispatcher/src/config"
+	"gorm.io/gorm"
 
 	gitlabwebhook "github.com/flc1125/go-gitlab-webhook/v2"
 )
 
-func HandleHealth(w http.ResponseWriter, r *http.Request) {
+type Manager struct {
+	logger     *slog.Logger
+	cfg        *config.Config
+	db         *gorm.DB
+	dispatcher *gitlabwebhook.Dispatcher
+}
+
+func NewManager(logger *slog.Logger, cfg *config.Config, db *gorm.DB) *Manager {
+	return &Manager{
+		logger:     logger,
+		cfg:        cfg,
+		db:         db,
+		dispatcher: newDispatcher(),
+	}
+}
+
+func (m Manager) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
-func NewDispatcher() *gitlabwebhook.Dispatcher {
+func newDispatcher() *gitlabwebhook.Dispatcher {
 	return gitlabwebhook.NewDispatcher(
 		gitlabwebhook.RegisterListeners(
 			&telegramListener{},
@@ -27,87 +40,33 @@ func NewDispatcher() *gitlabwebhook.Dispatcher {
 	)
 }
 
-func HandleWebhook(dispatcher *gitlabwebhook.Dispatcher, cfg config.Config) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func (m Manager) HandleWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-		ctx = context.WithValue(ctx, "TelegramBotToken", cfg.TelegramBotToken)
-		ctx = context.WithValue(ctx, "TelegramChatID", cfg.TelegramChatID)
-		ctx = context.WithValue(ctx, "TelegramThreadID", cfg.TelegramThreadID)
+	ctx = context.WithValue(ctx, "TelegramBotToken", m.cfg.TelegramBotToken)
+	ctx = context.WithValue(ctx, "TelegramChatID", m.cfg.TelegramChatID)
+	ctx = context.WithValue(ctx, "TelegramThreadID", m.cfg.TelegramThreadID)
 
-		opts := []gitlabwebhook.DispatchRequestOption{gitlabwebhook.DispatchRequestWithContext(ctx)}
-		if cfg.GitLabSecretToken != "" {
-			opts = append(opts, gitlabwebhook.DispatchRequestWithToken(cfg.GitLabSecretToken))
-		}
+	opts := []gitlabwebhook.DispatchRequestOption{gitlabwebhook.DispatchRequestWithContext(ctx)}
+	if m.cfg.GitLabSecretToken != "" {
+		opts = append(opts, gitlabwebhook.DispatchRequestWithToken(m.cfg.GitLabSecretToken))
+	}
 
-		if err := dispatcher.DispatchRequest(r, opts...); err != nil {
-			slog.Error("failed to dispatch webhook request", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	if err := m.dispatcher.DispatchRequest(r, opts...); err != nil {
+		m.logger.Error("failed to dispatch webhook request", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-		w.WriteHeader(http.StatusNoContent)
-	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func HandleLog(cfg config.Config) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+func (m Manager) GetServeMultiplexer() *http.ServeMux {
+	mux := http.NewServeMux()
 
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/webhook", m.HandleWebhook)
+	mux.HandleFunc("/api/log", m.HandleLog)
+	mux.HandleFunc("/health", m.HandleHealth)
 
-		if cfg.LogAPIKey != "" {
-			apiKey := r.Header.Get("X-API-Key")
-			if subtle.ConstantTimeCompare([]byte(apiKey), []byte(cfg.LogAPIKey)) != 1 {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-		}
-
-		defer r.Body.Close()
-		buf, err := io.ReadAll(r.Body)
-		if err != nil {
-			slog.Error("failed to read log payload", "error", err)
-			http.Error(w, "Failed to read log payload", http.StatusInternalServerError)
-			return
-		}
-
-		var log Log
-		err = json.Unmarshal(buf, &log)
-		if err != nil {
-			slog.Error("failed to unmarshal log payload", "error", err)
-			http.Error(w, "Failed to unmarshal log payload", http.StatusBadRequest)
-			return
-		}
-
-		msg := strings.Builder{}
-		if log.Source != "" {
-			msg.WriteString("*Source:* " + log.Source + "\n")
-		}
-		msg.WriteString("*Level:* " + log.Level + "\n")
-		msg.WriteString("*Message:* " + log.Message + "\n")
-
-		if len(log.Args) > 0 {
-			msg.WriteString("*Args:*\n")
-			for k, v := range log.Args {
-				msg.WriteString("  - *" + k + "*: " + v + "\n")
-			}
-		}
-
-		if log.Level == "WARN" || log.Level == "ERROR" {
-			err = sendTelegramMessage(cfg.TelegramBotToken, cfg.TelegramChatID, cfg.TelegramThreadID, msg.String(), false)
-			log.Sent = err == nil
-		}
-
-		// TODO: insert log in db
-		// err = db.Create(&log).Error
-
-		w.WriteHeader(http.StatusNoContent)
-	})
+	return mux
 }
