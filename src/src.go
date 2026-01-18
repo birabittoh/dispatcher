@@ -28,9 +28,7 @@ func Main() int {
 		return 1
 	}
 
-	m := api.NewManager(logger, cfg, db)
-
-	mux := m.GetServeMultiplexer()
+	mux := api.NewServeMultiplexer(logger, cfg, db)
 
 	logger.Info("Server starting on " + cfg.ListenAddress)
 	logger.Error(http.ListenAndServe(cfg.ListenAddress, mux).Error())

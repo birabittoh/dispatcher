@@ -18,13 +18,20 @@ type Manager struct {
 	dispatcher *gitlabwebhook.Dispatcher
 }
 
-func NewManager(logger *slog.Logger, cfg *config.Config, db *gorm.DB) *Manager {
-	return &Manager{
+func NewServeMultiplexer(logger *slog.Logger, cfg *config.Config, db *gorm.DB) *http.ServeMux {
+	mux := http.NewServeMux()
+	m := &Manager{
 		logger:     logger,
 		cfg:        cfg,
 		db:         db,
 		dispatcher: newDispatcher(),
 	}
+
+	mux.HandleFunc("/api/webhook", m.HandleWebhook)
+	mux.HandleFunc("/api/log", m.HandleLog)
+	mux.HandleFunc("/health", m.HandleHealth)
+
+	return mux
 }
 
 func (m Manager) HandleHealth(w http.ResponseWriter, r *http.Request) {
@@ -59,14 +66,4 @@ func (m Manager) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (m Manager) GetServeMultiplexer() *http.ServeMux {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/api/webhook", m.HandleWebhook)
-	mux.HandleFunc("/api/log", m.HandleLog)
-	mux.HandleFunc("/health", m.HandleHealth)
-
-	return mux
 }
