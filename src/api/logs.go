@@ -4,11 +4,12 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/birabittoh/dispatcher/src/models"
+
+	"github.com/birabittoh/logs"
 )
 
 func (m Manager) HandleLog(w http.ResponseWriter, r *http.Request) {
@@ -33,42 +34,44 @@ func (m Manager) HandleLog(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	buf, err := io.ReadAll(r.Body)
 	if err != nil {
-		slog.Error("failed to read log payload", "error", err)
+		m.logger.Error("failed to read log payload", "error", err)
 		http.Error(w, "Failed to read log payload", http.StatusInternalServerError)
 		return
 	}
 
-	var log models.Log
-	err = json.Unmarshal(buf, &log)
+	var logsBatch []models.Log
+	err = json.Unmarshal(buf, &logsBatch)
 	if err != nil {
-		slog.Error("failed to unmarshal log payload", "error", err)
+		m.logger.Error("failed to unmarshal log payload", "error", err)
 		http.Error(w, "Failed to unmarshal log payload", http.StatusBadRequest)
 		return
 	}
 
-	msg := strings.Builder{}
-	if log.Source != "" {
-		msg.WriteString("*Source:* " + log.Source + "\n")
-	}
-	msg.WriteString("*Level:* " + log.Level + "\n")
-	msg.WriteString("*Message:* " + log.Message + "\n")
+	for i, log := range logsBatch {
+		msg := strings.Builder{}
+		if log.Source != "" {
+			msg.WriteString("*Source:* " + log.Source + "\n")
+		}
+		msg.WriteString("*Level:* " + log.Level + "\n")
+		msg.WriteString("*Message:* " + log.Message + "\n")
 
-	if len(log.Args) > 0 {
-		msg.WriteString("*Args:*\n")
-		for k, v := range log.Args {
-			msg.WriteString("  - *" + k + "*: " + v + "\n")
+		if len(log.Args) > 0 {
+			msg.WriteString("*Args:*\n")
+			for k, v := range log.Args {
+				msg.WriteString("  - *" + k + "*: " + v + "\n")
+			}
+		}
+
+		if log.Level == logs.WARN || log.Level == logs.ERROR {
+			err = sendTelegramMessage(m.cfg.TelegramBotToken, m.cfg.TelegramChatID, m.cfg.TelegramThreadID, msg.String(), false)
+			logsBatch[i].Sent = err == nil
 		}
 	}
 
-	if log.Level == "WARN" || log.Level == "ERROR" {
-		err = sendTelegramMessage(m.cfg.TelegramBotToken, m.cfg.TelegramChatID, m.cfg.TelegramThreadID, msg.String(), false)
-		log.Sent = err == nil
-	}
-
-	err = m.db.Create(&log).Error
+	err = m.db.Create(logsBatch).Error
 	if err != nil {
-		slog.Error("failed to store log in database", "error", err)
-		http.Error(w, "Failed to store log in database", http.StatusInternalServerError)
+		m.logger.Error("failed to store logs in database", "error", err)
+		http.Error(w, "Failed to store logs in database", http.StatusInternalServerError)
 		return
 	}
 
